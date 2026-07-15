@@ -3,7 +3,6 @@ import time
 import threading
 from flask import Flask
 import pandas as pd
-import pandas_ta as ta
 import telebot
 from pocketoptionapi.stable_api import PocketOption
 
