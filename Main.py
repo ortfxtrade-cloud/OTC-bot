@@ -15,7 +15,7 @@ bot_running.set()
 ssid = os.environ.get("PO_SSID")
 telegram_token = os.environ.get("TELEGRAM_TOKEN")
 chat_id = os.environ.get("CHAT_ID")
-api = PocketOption(ssid)
+api = os.environ.get("PO_SSID")
 tg_bot = telebot.TeleBot(telegram_token)
 
 # --- CORE LOGIC ---
