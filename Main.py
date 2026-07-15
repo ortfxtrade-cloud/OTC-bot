@@ -3,7 +3,8 @@ import time
 import threading
 from flask import Flask
 import pandas as pd
-import telebotfrom pocketoptionapi_async import AsyncPocketOptionClient
+import telebot
+from pocketoptionapi_async import AsyncPocketOptionClient
 
 
 # --- CONFIG ---
