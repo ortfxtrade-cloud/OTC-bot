@@ -1,7 +1,5 @@
 flask
 pandas
-pocket-option
+pocketoptionapi-async
 python-dotenv
 pyTelegramBotAPI
-
-
