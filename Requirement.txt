@@ -1,0 +1,7 @@
+flask
+pandas
+pandas_ta
+pocket-option
+python-dotenv
+pyTelegramBotAPI
+
