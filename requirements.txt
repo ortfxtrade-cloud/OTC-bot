@@ -1,8 +1,6 @@
 flask
-pyTelegramBotAPI
 pandas
-numpy
-requests
-gunicorn
-pocketoptionapi_asyn
 ta
+pyTelegramBotAPI
+python-dotenv
+pocketoptionapi-async
