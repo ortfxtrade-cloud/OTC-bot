@@ -15,8 +15,8 @@ bot_running = threading.Event()
 bot_running.set() 
 
 ssid = os.environ.get("PO_SSID")
-telegram_token = os.environ.get("TELEGRAM_TOKEN")
-chat_id = os.environ.get("CHAT_ID")
+telegram_token = "8018417452:AAHGHCYACl_b2Rd_hvRNG6WP2NgC9ZRi2Q8"
+chat_id = "8701685996"
 tg_bot = telebot.TeleBot(telegram_token)
 
 # Store pending signals
