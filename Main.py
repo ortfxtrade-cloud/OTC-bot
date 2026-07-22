@@ -16,7 +16,7 @@ from urllib3.util.retry import Retry
 
 # --- LOGGING SETUP ---
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -52,10 +52,9 @@ spread_rejected = {}
 
 # --- POCKET OPTION API CLIENT ---
 class PocketOptionClient:
-    """Main Pocket Option API Client with enhanced debugging"""
+    """Pocket Option API Client with browser-like login"""
     
     BASE_URL = "https://pocketoption.com"
-    API_URL = "https://pocketoption.com/api"
     
     def __init__(self):
         self.session = None
@@ -64,7 +63,7 @@ class PocketOptionClient:
         self._init_session()
     
     def _init_session(self):
-        """Initialize requests session with proper headers"""
+        """Initialize requests session like a browser"""
         self.session = requests.Session()
         
         # Configure retry strategy
@@ -77,7 +76,7 @@ class PocketOptionClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
         
-        # Set headers
+        # Set browser-like headers
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
@@ -96,262 +95,100 @@ class PocketOptionClient:
         })
     
     def set_ssid(self, ssid):
-        """Set SSID and update headers"""
+        """Set SSID and update headers like a browser storing a cookie"""
         self.ssid = ssid
         if ssid:
+            # Store in headers like browser would
             self.session.headers.update({
                 'Cookie': f'ssid={ssid}'
             })
+            # Store in session cookies like browser would
             self.session.cookies.set('ssid', ssid, domain='.pocketoption.com', path='/')
-            logger.info(f"SSID set: {ssid[:10]}...")
-    
-    def _extract_ssid_from_response(self, response, data):
-        """Enhanced SSID extraction with detailed logging"""
-        logger.debug("=" * 50)
-        logger.debug("EXTRACTING SSID - DETAILED DEBUG")
-        logger.debug("=" * 50)
-        
-        # 1. Check cookies
-        logger.debug("Checking cookies...")
-        for cookie in response.cookies:
-            logger.debug(f"Cookie: {cookie.name} = {cookie.value[:20] if len(cookie.value) > 20 else cookie.value}")
-            if 'ssid' in cookie.name.lower():
-                logger.info(f"✅ Found SSID in cookie: {cookie.name} = {cookie.value[:10]}...")
-                return cookie.value
-        
-        # 2. Check response headers
-        logger.debug("Checking response headers...")
-        for header, value in response.headers.items():
-            logger.debug(f"Header: {header} = {value[:50] if len(value) > 50 else value}")
-            if 'ssid' in header.lower() or 'session' in header.lower():
-                logger.info(f"✅ Found SSID in header: {header} = {value[:10]}...")
-                return value
-        
-        # 3. Check response JSON
-        logger.debug("Checking response JSON...")
-        logger.debug(f"Response status: {response.status_code}")
-        logger.debug(f"Response text: {response.text[:500]}...")
-        
-        if isinstance(data, dict):
-            logger.debug(f"JSON keys: {list(data.keys())}")
-            
-            # Direct keys
-            for key in ['ssid', 'token', 'session', 'sid', 'session_id', 'access_token', 'jwt', 'auth_token']:
-                if key in data and data[key]:
-                    logger.info(f"✅ Found SSID in JSON key '{key}': {str(data[key])[:10]}...")
-                    return data[key]
-            
-            # Nested in 'data'
-            if 'data' in data and isinstance(data['data'], dict):
-                for key in ['ssid', 'token', 'session', 'sid', 'session_id', 'access_token']:
-                    if key in data['data'] and data['data'][key]:
-                        logger.info(f"✅ Found SSID in JSON data['{key}']: {str(data['data'][key])[:10]}...")
-                        return data['data'][key]
-            
-            # Nested in 'result'
-            if 'result' in data and isinstance(data['result'], dict):
-                for key in ['ssid', 'token', 'session', 'sid', 'session_id']:
-                    if key in data['result'] and data['result'][key]:
-                        logger.info(f"✅ Found SSID in JSON result['{key}']: {str(data['result'][key])[:10]}...")
-                        return data['result'][key]
-            
-            # Check all string values for SSID pattern
-            for key, value in data.items():
-                if isinstance(value, str) and len(value) > 20 and ('ssid' in key.lower() or 'token' in key.lower() or 'session' in key.lower()):
-                    logger.info(f"✅ Found potential SSID in '{key}': {value[:10]}...")
-                    return value
-        
-        # 4. Check for SSID in URL parameters
-        if hasattr(response, 'url') and 'ssid' in response.url:
-            match = re.search(r'[?&]ssid=([^&]+)', response.url)
-            if match:
-                logger.info(f"✅ Found SSID in URL: {match.group(1)[:10]}...")
-                return match.group(1)
-        
-        # 5. Check for SSID in response text (as last resort)
-        if response.text:
-            ssid_patterns = [
-                r'"ssid"\s*[:=]\s*"([^"]+)"',
-                r'"token"\s*[:=]\s*"([^"]+)"',
-                r'"session"\s*[:=]\s*"([^"]+)"',
-                r'ssid=([^&\s"]+)',
-                r'token=([^&\s"]+)'
-            ]
-            for pattern in ssid_patterns:
-                match = re.search(pattern, response.text)
-                if match:
-                    logger.info(f"✅ Found SSID in text pattern: {match.group(1)[:10]}...")
-                    return match.group(1)
-        
-        logger.warning("❌ No SSID found in response")
-        logger.debug("=" * 50)
-        return None
+            logger.info(f"✅ SSID stored: {ssid[:10]}...")
     
     def login(self, email, password):
-        """Login to Pocket Option with enhanced debugging"""
+        """Login to Pocket Option like a browser would"""
         result = {"success": False, "ssid": None, "account": {}, "error": None}
         
         try:
-            # Reset session for fresh login
+            # Reset session for fresh login like a new browser session
             self._init_session()
             
-            # Step 1: Get main page to establish session
-            logger.info("Step 1: Fetching main page...")
-            main_response = self.session.get(self.BASE_URL, timeout=15)
-            logger.debug(f"Main page status: {main_response.status_code}")
-            logger.debug(f"Cookies after main page: {dict(self.session.cookies)}")
+            logger.info("=" * 60)
+            logger.info("🔄 Starting browser-like login process...")
+            logger.info("=" * 60)
             
-            # Step 2: Get login page (may have CSRF token)
-            logger.info("Step 2: Fetching login page...")
-            login_page = self.session.get(f"{self.BASE_URL}/login", timeout=15)
-            logger.debug(f"Login page status: {login_page.status_code}")
+            # STEP 1: Visit homepage first (like a browser would)
+            logger.info("📄 STEP 1: Visiting homepage...")
+            try:
+                home_response = self.session.get(self.BASE_URL, timeout=15)
+                logger.info(f"   ✅ Homepage loaded (Status: {home_response.status_code})")
+                logger.debug(f"   Cookies after homepage: {dict(self.session.cookies)}")
+            except Exception as e:
+                logger.warning(f"   ⚠️ Could not load homepage: {e}")
             
-            # Extract CSRF token
-            csrf_token = self._extract_csrf_token(login_page.text)
-            logger.info(f"CSRF token: {csrf_token}")
+            # STEP 2: Get login page (like a browser would)
+            logger.info("📄 STEP 2: Getting login page...")
+            try:
+                login_page = self.session.get(f"{self.BASE_URL}/en/login", timeout=15)
+                logger.info(f"   ✅ Login page loaded (Status: {login_page.status_code})")
+                logger.debug(f"   Cookies after login page: {dict(self.session.cookies)}")
+            except Exception as e:
+                logger.warning(f"   ⚠️ Could not load login page: {e}")
+                login_page = None
             
-            # Step 3: Prepare login request
-            logger.info("Step 3: Sending login request...")
+            # STEP 3: Extract CSRF token if needed (like a browser reading page)
+            logger.info("🔍 STEP 3: Looking for CSRF token...")
+            csrf_token = None
+            if login_page and login_page.text:
+                csrf_token = self._extract_csrf_token(login_page.text)
+                if csrf_token:
+                    logger.info(f"   ✅ CSRF token found: {csrf_token[:20]}...")
+                    # Add CSRF token to headers like browser would
+                    self.session.headers['X-CSRF-TOKEN'] = csrf_token
+                else:
+                    logger.info("   ℹ️ No CSRF token needed")
             
-            # Try different login endpoints with different formats
-            login_attempts = [
-                # Standard JSON login
-                {
-                    "endpoint": f"{self.API_URL}/auth/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": True
-                    },
-                    "headers": {"Content-Type": "application/json"}
-                },
-                # With CSRF token
-                {
-                    "endpoint": f"{self.API_URL}/auth/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": True,
-                        "csrf_token": csrf_token if csrf_token else ""
-                    },
-                    "headers": {"Content-Type": "application/json", "X-CSRF-TOKEN": csrf_token if csrf_token else ""}
-                },
-                # Form data
-                {
-                    "endpoint": f"{self.BASE_URL}/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": "on"
-                    },
-                    "headers": {"Content-Type": "application/x-www-form-urlencoded"}
-                },
-                # API v2
-                {
-                    "endpoint": f"{self.API_URL}/v2/auth/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": True
-                    },
-                    "headers": {"Content-Type": "application/json"}
-                },
-                # Alternative endpoint
-                {
-                    "endpoint": f"{self.BASE_URL}/api/auth/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": True
-                    },
-                    "headers": {"Content-Type": "application/json"}
-                },
-                # With additional fields
-                {
-                    "endpoint": f"{self.API_URL}/auth/login",
-                    "data": {
-                        "email": email,
-                        "password": password,
-                        "remember": True,
-                        "device": "web",
-                        "browser": "chrome"
-                    },
-                    "headers": {"Content-Type": "application/json"}
-                }
+            # STEP 4: Try different login methods like a browser would
+            login_methods = [
+                ("API Login", self._login_api),
+                ("Form Login", self._login_form),
+                ("JSON Login", self._login_json)
             ]
             
-            for attempt_num, attempt in enumerate(login_attempts, 1):
-                logger.info(f"Login attempt {attempt_num}: {attempt['endpoint']}")
-                logger.debug(f"Data: {attempt['data']}")
-                
-                # Update headers for this attempt
-                for key, value in attempt['headers'].items():
-                    self.session.headers[key] = value
+            for method_name, method in login_methods:
+                logger.info("=" * 60)
+                logger.info(f"🔑 STEP 4.{login_methods.index((method_name, method)) + 1}: Trying {method_name}...")
                 
                 try:
-                    if attempt['headers'].get('Content-Type') == 'application/x-www-form-urlencoded':
-                        response = self.session.post(attempt['endpoint'], data=attempt['data'], timeout=15)
+                    # Pass CSRF token if found
+                    method_result = method(email, password, csrf_token)
+                    
+                    if method_result.get("success") and method_result.get("ssid"):
+                        logger.info("=" * 60)
+                        logger.info(f"✅ {method_name} SUCCESSFUL!")
+                        logger.info(f"   SSID: {method_result['ssid'][:20]}...")
+                        logger.info("=" * 60)
+                        return method_result
                     else:
-                        response = self.session.post(attempt['endpoint'], json=attempt['data'], timeout=15)
-                    
-                    logger.info(f"Response status: {response.status_code}")
-                    logger.debug(f"Response headers: {dict(response.headers)}")
-                    logger.debug(f"Response cookies: {dict(response.cookies)}")
-                    logger.debug(f"Response text: {response.text[:500]}")
-                    
-                    # Store last response for debugging
-                    self.last_response = {
-                        "status": response.status_code,
-                        "headers": dict(response.headers),
-                        "cookies": dict(response.cookies),
-                        "text": response.text[:500]
-                    }
-                    
-                    if response.status_code == 200:
-                        try:
-                            data = response.json()
-                            logger.debug(f"Response JSON: {data}")
-                        except:
-                            data = {}
-                        
-                        # Extract SSID
-                        ssid = self._extract_ssid_from_response(response, data)
-                        
-                        if ssid:
-                            logger.info(f"✅ Login successful! SSID: {ssid[:10]}...")
-                            result["ssid"] = ssid
-                            self.set_ssid(ssid)
-                            
-                            # Get profile
-                            profile = self.get_profile()
-                            if profile:
-                                result["account"] = profile
-                            
-                            result["success"] = True
-                            return result
-                        else:
-                            logger.warning(f"Login attempt {attempt_num} failed to extract SSID")
-                            
-                    elif response.status_code == 401:
-                        logger.warning("Invalid credentials (401)")
-                        result["error"] = "Invalid email or password"
-                        return result
-                    elif response.status_code == 403:
-                        logger.warning("Access forbidden (403) - possible rate limiting or IP ban")
-                        result["error"] = "Access forbidden - try again later"
-                        return result
+                        logger.warning(f"   ❌ {method_name} failed: {method_result.get('error', 'Unknown error')}")
                         
                 except Exception as e:
-                    logger.error(f"Login attempt {attempt_num} error: {e}")
+                    logger.error(f"   ❌ {method_name} error: {e}")
                     continue
             
-            # If all attempts failed, try using Selenium as fallback
-            logger.info("All API attempts failed. Trying Selenium fallback...")
-            sel_result = self._selenium_login(email, password)
-            if sel_result["success"]:
-                return sel_result
+            # STEP 5: Try Selenium as last resort (like browser automation)
+            logger.info("=" * 60)
+            logger.info("🤖 STEP 5: Trying Selenium automation...")
+            try:
+                sel_result = self._selenium_login(email, password)
+                if sel_result.get("success") and sel_result.get("ssid"):
+                    logger.info("✅ Selenium login SUCCESSFUL!")
+                    return sel_result
+            except Exception as e:
+                logger.error(f"Selenium error: {e}")
             
-            result["error"] = "All login attempts failed - no SSID extracted"
+            result["error"] = "All login methods failed"
             
         except Exception as e:
             result["error"] = f"Login error: {str(e)[:100]}"
@@ -359,8 +196,216 @@ class PocketOptionClient:
         
         return result
     
+    def _login_api(self, email, password, csrf_token=None):
+        """Login using API endpoint (like browser's fetch/XMLHttpRequest)"""
+        result = {"success": False, "ssid": None, "account": {}, "error": None}
+        
+        try:
+            # Try different API endpoints
+            endpoints = [
+                "https://pocketoption.com/api/auth/login",
+                "https://pocketoption.com/api/v2/auth/login",
+                "https://pocketoption.com/login"
+            ]
+            
+            for endpoint in endpoints:
+                logger.info(f"   Testing endpoint: {endpoint}")
+                
+                login_data = {
+                    "email": email,
+                    "password": password,
+                    "remember": True
+                }
+                
+                if csrf_token:
+                    login_data["csrf_token"] = csrf_token
+                
+                try:
+                    response = self.session.post(endpoint, json=login_data, timeout=15)
+                    
+                    logger.info(f"   Response status: {response.status_code}")
+                    logger.debug(f"   Response cookies: {dict(response.cookies)}")
+                    
+                    self.last_response = {
+                        "method": "api",
+                        "endpoint": endpoint,
+                        "status": response.status_code,
+                        "cookies": dict(response.cookies),
+                        "headers": dict(response.headers),
+                        "text": response.text[:500] if response.text else ""
+                    }
+                    
+                    # Check for SSID in cookies (like browser would)
+                    ssid = self._extract_ssid_from_cookies(response)
+                    
+                    if ssid:
+                        logger.info(f"   ✅ SSID found in cookies!")
+                        result["ssid"] = ssid
+                        self.set_ssid(ssid)
+                        
+                        # Get profile
+                        profile = self.get_profile()
+                        if profile:
+                            result["account"] = profile
+                        
+                        result["success"] = True
+                        return result
+                    
+                    # If no SSID in cookies, check response JSON
+                    if response.text and response.text.strip().startswith('{'):
+                        try:
+                            data = response.json()
+                            ssid = self._extract_ssid_from_json(data)
+                            if ssid:
+                                logger.info(f"   ✅ SSID found in JSON response!")
+                                result["ssid"] = ssid
+                                self.set_ssid(ssid)
+                                profile = self.get_profile()
+                                if profile:
+                                    result["account"] = profile
+                                result["success"] = True
+                                return result
+                        except:
+                            pass
+                    
+                except Exception as e:
+                    logger.warning(f"   Endpoint {endpoint} failed: {e}")
+                    continue
+            
+            result["error"] = "No SSID found in API responses"
+            
+        except Exception as e:
+            logger.error(f"API login error: {e}")
+            result["error"] = str(e)
+        
+        return result
+    
+    def _login_form(self, email, password, csrf_token=None):
+        """Login using form data (like browser form submission)"""
+        result = {"success": False, "ssid": None, "account": {}, "error": None}
+        
+        try:
+            endpoint = "https://pocketoption.com/login"
+            logger.info(f"   Endpoint: {endpoint}")
+            
+            # Change to form data like browser would
+            self.session.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+            
+            login_data = {
+                "email": email,
+                "password": password,
+                "remember": "on"
+            }
+            
+            if csrf_token:
+                login_data["_csrf"] = csrf_token
+                login_data["csrf_token"] = csrf_token
+            
+            response = self.session.post(endpoint, data=login_data, timeout=15, allow_redirects=True)
+            
+            logger.info(f"   Response status: {response.status_code}")
+            logger.debug(f"   Response cookies: {dict(response.cookies)}")
+            
+            self.last_response = {
+                "method": "form",
+                "status": response.status_code,
+                "cookies": dict(response.cookies),
+                "headers": dict(response.headers),
+                "text": response.text[:500] if response.text else ""
+            }
+            
+            # Check for SSID in cookies
+            ssid = self._extract_ssid_from_cookies(response)
+            
+            if ssid:
+                logger.info(f"   ✅ SSID found in cookies!")
+                result["ssid"] = ssid
+                self.set_ssid(ssid)
+                profile = self.get_profile()
+                if profile:
+                    result["account"] = profile
+                result["success"] = True
+            else:
+                result["error"] = "No SSID found"
+            
+        except Exception as e:
+            logger.error(f"Form login error: {e}")
+            result["error"] = str(e)
+        
+        return result
+    
+    def _login_json(self, email, password, csrf_token=None):
+        """Login with JSON payload (like browser AJAX)"""
+        result = {"success": False, "ssid": None, "account": {}, "error": None}
+        
+        try:
+            endpoint = "https://pocketoption.com/ajax/login"
+            logger.info(f"   Endpoint: {endpoint}")
+            
+            self.session.headers['Content-Type'] = 'application/json'
+            
+            login_data = {
+                "email": email,
+                "password": password,
+                "remember": 1
+            }
+            
+            if csrf_token:
+                login_data["csrf_token"] = csrf_token
+            
+            response = self.session.post(endpoint, json=login_data, timeout=15)
+            
+            logger.info(f"   Response status: {response.status_code}")
+            logger.debug(f"   Response cookies: {dict(response.cookies)}")
+            
+            self.last_response = {
+                "method": "json",
+                "status": response.status_code,
+                "cookies": dict(response.cookies),
+                "headers": dict(response.headers),
+                "text": response.text[:500] if response.text else ""
+            }
+            
+            # Check for SSID in cookies
+            ssid = self._extract_ssid_from_cookies(response)
+            
+            if ssid:
+                logger.info(f"   ✅ SSID found in cookies!")
+                result["ssid"] = ssid
+                self.set_ssid(ssid)
+                profile = self.get_profile()
+                if profile:
+                    result["account"] = profile
+                result["success"] = True
+                return result
+            
+            # Check JSON response
+            if response.text and response.text.strip().startswith('{'):
+                try:
+                    data = response.json()
+                    ssid = self._extract_ssid_from_json(data)
+                    if ssid:
+                        logger.info(f"   ✅ SSID found in JSON!")
+                        result["ssid"] = ssid
+                        self.set_ssid(ssid)
+                        profile = self.get_profile()
+                        if profile:
+                            result["account"] = profile
+                        result["success"] = True
+                        return result
+                except:
+                    pass
+            
+            result["error"] = "No SSID found"
+            
+        except Exception as e:
+            logger.error(f"JSON login error: {e}")
+            result["error"] = str(e)
+        
+        return result
+    
     def _selenium_login(self, email, password):
-        """Fallback login using Selenium"""
+        """Login using Selenium (like a real browser)"""
         result = {"success": False, "ssid": None, "account": {}, "error": None}
         
         try:
@@ -369,63 +414,115 @@ class PocketOptionClient:
             from selenium.webdriver.support.ui import WebDriverWait
             from selenium.webdriver.support import expected_conditions as EC
             from selenium.webdriver.chrome.options import Options
+            from selenium.webdriver.chrome.service import Service
+            from webdriver_manager.chrome import ChromeDriverManager
             
             chrome_options = Options()
             chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
             
-            driver = webdriver.Chrome(options=chrome_options)
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
             
             try:
+                logger.info("   Opening browser...")
                 driver.get("https://pocketoption.com/en/login")
                 
-                # Wait for email field and fill
+                # Wait for page to load
+                time.sleep(3)
+                
+                logger.info("   Entering credentials...")
+                # Find and fill email
                 email_field = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.NAME, "email"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='email']"))
                 )
+                email_field.clear()
                 email_field.send_keys(email)
                 
-                # Fill password
-                password_field = driver.find_element(By.NAME, "password")
+                # Find and fill password
+                password_field = driver.find_element(By.CSS_SELECTOR, "input[name='password']")
+                password_field.clear()
                 password_field.send_keys(password)
                 
                 # Click submit
-                submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+                logger.info("   Submitting form...")
+                submit_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
                 submit_button.click()
                 
                 # Wait for login
                 time.sleep(5)
                 
-                # Get SSID from cookies
-                ssid_cookie = driver.get_cookie("ssid")
-                if ssid_cookie:
-                    ssid = ssid_cookie["value"]
-                    result["ssid"] = ssid
-                    self.set_ssid(ssid)
-                    
-                    # Get profile
-                    profile = self.get_profile()
-                    if profile:
-                        result["account"] = profile
-                    
-                    result["success"] = True
-                    logger.info(f"✅ Selenium login successful! SSID: {ssid[:10]}...")
-                else:
-                    result["error"] = "No SSID found in cookies after Selenium login"
+                # Get cookies
+                cookies = driver.get_cookies()
+                logger.info(f"   Found {len(cookies)} cookies")
+                
+                # Look for SSID
+                for cookie in cookies:
+                    if 'ssid' in cookie['name'].lower():
+                        ssid = cookie['value']
+                        logger.info(f"   ✅ SSID found: {ssid[:20]}...")
+                        result["ssid"] = ssid
+                        self.set_ssid(ssid)
+                        profile = self.get_profile()
+                        if profile:
+                            result["account"] = profile
+                        result["success"] = True
+                        return result
+                
+                result["error"] = "No SSID found in browser cookies"
                 
             finally:
                 driver.quit()
                 
+        except ImportError:
+            logger.warning("   Selenium not installed")
+            result["error"] = "Selenium not installed"
         except Exception as e:
-            result["error"] = f"Selenium login error: {str(e)[:100]}"
-            logger.error(f"Selenium login error: {e}")
+            logger.error(f"   Selenium error: {e}")
+            result["error"] = str(e)
         
         return result
     
+    def _extract_ssid_from_cookies(self, response):
+        """Extract SSID from cookies (like browser would)"""
+        if 'ssid' in response.cookies:
+            return response.cookies.get('ssid')
+        
+        # Check if session has SSID cookie
+        if self.session and 'ssid' in self.session.cookies:
+            return self.session.cookies.get('ssid')
+        
+        return None
+    
+    def _extract_ssid_from_json(self, data):
+        """Extract SSID from JSON response"""
+        if isinstance(data, dict):
+            # Direct keys
+            for key in ['ssid', 'token', 'session', 'sid', 'session_id', 'access_token']:
+                if key in data and data[key]:
+                    return data[key]
+            
+            # Nested in 'data'
+            if 'data' in data and isinstance(data['data'], dict):
+                for key in ['ssid', 'token', 'session', 'sid']:
+                    if key in data['data'] and data['data'][key]:
+                        return data['data'][key]
+            
+            # Nested in 'result'
+            if 'result' in data and isinstance(data['result'], dict):
+                for key in ['ssid', 'token', 'session', 'sid']:
+                    if key in data['result'] and data['result'][key]:
+                        return data['result'][key]
+        
+        return None
+    
     def _extract_csrf_token(self, html):
-        """Extract CSRF token from HTML"""
+        """Extract CSRF token from HTML (like browser reading page)"""
         patterns = [
             r'csrf_token["\']?\s*[:=]\s*["\']([^"\']+)["\']',
             r'name="csrf-token" content="([^"]+)"',
@@ -444,24 +541,19 @@ class PocketOptionClient:
         return None
     
     def get_profile(self):
-        """Get user profile with debugging"""
+        """Get user profile (like browser requesting profile)"""
         try:
-            logger.info("Fetching profile...")
             endpoints = [
-                f"{self.API_URL}/profile",
-                f"{self.API_URL}/v2/profile",
-                f"{self.BASE_URL}/api/profile",
-                f"{self.API_URL}/user/profile"
+                "https://pocketoption.com/api/profile",
+                "https://pocketoption.com/api/v2/profile",
+                "https://pocketoption.com/profile"
             ]
             
             for endpoint in endpoints:
                 try:
                     response = self.session.get(endpoint, timeout=10)
-                    logger.debug(f"Profile endpoint {endpoint}: {response.status_code}")
-                    
                     if response.status_code == 200:
                         data = response.json()
-                        logger.info(f"Profile data received: {data}")
                         
                         # Extract profile data
                         if 'id' in data:
@@ -479,16 +571,7 @@ class PocketOptionClient:
                                 "demo_balance": profile_data.get('demo_balance'),
                                 "currency": profile_data.get('currency', 'USD')
                             }
-                        elif 'result' in data and isinstance(data['result'], dict):
-                            profile_data = data['result']
-                            return {
-                                "id": profile_data.get('id'),
-                                "balance": profile_data.get('balance'),
-                                "demo_balance": profile_data.get('demo_balance'),
-                                "currency": profile_data.get('currency', 'USD')
-                            }
-                except Exception as e:
-                    logger.warning(f"Profile endpoint {endpoint} failed: {e}")
+                except:
                     continue
             
             return {}
@@ -500,7 +583,6 @@ class PocketOptionClient:
     def verify_ssid(self, ssid):
         """Verify if SSID is valid"""
         try:
-            logger.info(f"Verifying SSID: {ssid[:10]}...")
             temp_session = requests.Session()
             temp_session.headers.update({
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -508,8 +590,7 @@ class PocketOptionClient:
                 'Cookie': f'ssid={ssid}'
             })
             
-            response = temp_session.get(f"{self.API_URL}/profile", timeout=10)
-            logger.debug(f"SSID verification status: {response.status_code}")
+            response = temp_session.get("https://pocketoption.com/api/profile", timeout=10)
             return response.status_code == 200
             
         except Exception as e:
@@ -527,8 +608,8 @@ class PocketOptionClient:
             }
             
             endpoints = [
-                f"{self.API_URL}/candles",
-                f"{self.API_URL}/v2/candles"
+                "https://pocketoption.com/api/candles",
+                "https://pocketoption.com/api/v2/candles"
             ]
             
             for endpoint in endpoints:
@@ -555,8 +636,8 @@ class PocketOptionClient:
         """Get assets profit information"""
         try:
             endpoints = [
-                f"{self.API_URL}/assets/profit",
-                f"{self.API_URL}/v2/assets/profit"
+                "https://pocketoption.com/api/assets/profit",
+                "https://pocketoption.com/api/v2/assets/profit"
             ]
             
             for endpoint in endpoints:
@@ -568,8 +649,6 @@ class PocketOptionClient:
                             return data['profit']
                         elif 'data' in data and 'profit' in data['data']:
                             return data['data']['profit']
-                        elif isinstance(data, dict):
-                            return data
                 except:
                     continue
             
@@ -590,8 +669,8 @@ class PocketOptionClient:
             }
             
             endpoints = [
-                f"{self.API_URL}/trade/open",
-                f"{self.API_URL}/v2/trade/open"
+                "https://pocketoption.com/api/trade/open",
+                "https://pocketoption.com/api/v2/trade/open"
             ]
             
             for endpoint in endpoints:
@@ -623,8 +702,8 @@ class PocketOptionClient:
         """Check trade result"""
         try:
             endpoints = [
-                f"{self.API_URL}/trade/result/{trade_id}",
-                f"{self.API_URL}/v2/trade/result/{trade_id}"
+                f"https://pocketoption.com/api/trade/result/{trade_id}",
+                f"https://pocketoption.com/api/v2/trade/result/{trade_id}"
             ]
             
             for endpoint in endpoints:
@@ -648,7 +727,7 @@ class PocketOptionClient:
     def connect(self):
         """Check if connected"""
         try:
-            response = self.session.get(f"{self.API_URL}/profile", timeout=10)
+            response = self.session.get("https://pocketoption.com/api/profile", timeout=10)
             return response.status_code == 200
         except:
             return False
@@ -1541,7 +1620,7 @@ def debug():
 # --- MAIN ---
 if __name__ == "__main__":
     try:
-        logger.info("Starting Trading Bot with enhanced debugging...")
+        logger.info("Starting Trading Bot with browser-like login...")
         
         # Test if SSID works
         if pocket_client.ssid:
